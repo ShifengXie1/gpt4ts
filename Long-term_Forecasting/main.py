@@ -2,7 +2,7 @@ from data_provider.data_factory import data_provider
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, vali, test
 from tqdm import tqdm
 from models.PatchTST import PatchTST
-from models.GPT4TS import GPT4TS
+from models.GPT4TS import GPT4TS, MultiPeriodGPT4TS
 from models.DLinear import DLinear
 
 
@@ -77,7 +77,9 @@ parser.add_argument('--tmax', type=int, default=10)
 
 parser.add_argument('--itr', type=int, default=3)
 parser.add_argument('--cos', type=int, default=0)
+
 parser.add_argument('--run_time', type=int, default=0)
+parser.add_argument('--multi_patch', type=str, default='16,24,48')
 
 
 args = parser.parse_args()
@@ -106,7 +108,7 @@ for ii in range(args.itr):
     if not os.path.exists(path):
         os.makedirs(path)
     result_path = os.path.join(args.checkpoints, 'result_{}.txt'.format(args.run_time))
-    with open(result_path, 'w') as f:
+    with open(result_path, 'a') as f:
         f.write('setting: {}\n'.format(setting))
 
     if args.freq == 0:
@@ -131,6 +133,8 @@ for ii in range(args.itr):
     elif args.model == 'DLinear':
         model = DLinear(args, device)
         model.to(device)
+    elif args.model == 'MultiPeriodGPT4TS':
+        model = MultiPeriodGPT4TS(args, device)
     else:
         model = GPT4TS(args, device)
     # mse, mae = test(model, test_data, test_loader, args, device, ii)

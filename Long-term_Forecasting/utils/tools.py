@@ -250,7 +250,7 @@ def convert_tsf_to_dataframe(
 
 def vali(model, vali_data, vali_loader, criterion, args, device, itr):
     total_loss = []
-    if args.model == 'PatchTST' or args.model == 'DLinear' or args.model == 'TCN':
+    if args.model == 'PatchTST' or args.model == 'DLinear' or args.model == 'TCN' or args.model == 'MultiPeriodGPT4TS':
         model.eval()
     else:
         model.in_layer.eval()
@@ -276,7 +276,7 @@ def vali(model, vali_data, vali_loader, criterion, args, device, itr):
 
             total_loss.append(loss)
     total_loss = np.average(total_loss)
-    if args.model == 'PatchTST' or args.model == 'DLinear' or args.model == 'TCN':
+    if args.model == 'PatchTST' or args.model == 'DLinear' or args.model == 'TCN' or args.model == 'MultiPeriodGPT4TS':
         model.train()
     else:
         model.in_layer.train()
