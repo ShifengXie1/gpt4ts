@@ -34,7 +34,7 @@ python main.py \
     --patch_size 16 \
     --stride 8 \
     --percent $percent \
-    --gpt_layer 6 \
+    --gpt_layers 6 \
     --itr 3 \
     --model $model \
     --tmax 20 \
