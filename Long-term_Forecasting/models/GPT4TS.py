@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -24,7 +25,15 @@ class GPT4TS(nn.Module):
         
         if configs.is_gpt:
             if configs.pretrain:
-                self.gpt2 = GPT2Model.from_pretrained('gpt2', output_attentions=True, output_hidden_states=True)  # loads a pretrained GPT-2 base model
+                gpt2_model_path = os.environ.get('GPT2_MODEL_PATH', 'gpt2')
+                local_files_only = os.environ.get('GPT2_LOCAL_FILES_ONLY', '1') != '0'
+                print("Loading GPT-2 from: {}".format(gpt2_model_path))
+                self.gpt2 = GPT2Model.from_pretrained(
+                    gpt2_model_path,
+                    output_attentions=True,
+                    output_hidden_states=True,
+                    local_files_only=local_files_only
+                )  # loads a pretrained GPT-2 base model
             else:
                 print("------------------no pretrain------------------")
                 self.gpt2 = GPT2Model(GPT2Config())

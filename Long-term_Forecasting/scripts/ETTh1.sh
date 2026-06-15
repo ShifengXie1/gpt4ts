@@ -1,7 +1,10 @@
 
 export CUDA_VISIBLE_DEVICES=0
+export GPT2_MODEL_PATH=${GPT2_MODEL_PATH:-openai-community/gpt2}
+export GPT2_LOCAL_FILES_ONLY=${GPT2_LOCAL_FILES_ONLY:-1}
 
 seq_len=336
+gpt_layers=6
 model=GPT4TS
 
 for percent in 100
@@ -14,7 +17,7 @@ do
 python main.py \
     --root_path ./datasets/ETT-small/ \
     --data_path ETTh1.csv \
-    --model_id ETTh1_$model'_'$gpt_layer'_'$seq_len'_'$pred_len'_'$percent \
+    --model_id ETTh1_$model'_'$gpt_layers'_'$seq_len'_'$pred_len'_'$percent \
     --data ett_h \
     --seq_len $seq_len \
     --label_len 168 \
@@ -34,7 +37,7 @@ python main.py \
     --patch_size 16 \
     --stride 8 \
     --percent $percent \
-    --gpt_layers 6 \
+    --gpt_layers $gpt_layers \
     --itr 3 \
     --model $model \
     --tmax 20 \
