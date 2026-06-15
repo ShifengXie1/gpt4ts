@@ -77,7 +77,7 @@ parser.add_argument('--tmax', type=int, default=10)
 
 parser.add_argument('--itr', type=int, default=3)
 parser.add_argument('--cos', type=int, default=0)
-
+parser.add_argument('--run_time', type=int, default=0)
 
 
 args = parser.parse_args()
@@ -99,12 +99,15 @@ maes = []
 
 for ii in range(args.itr):
 
-    setting = '{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_gl{}_df{}_eb{}_itr{}'.format(args.model_id, 336, args.label_len, args.pred_len,
+    setting = '{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_gl{}_df{}_eb{}_itr{}'.format(args.model_id, args.seq_len, args.label_len, args.pred_len,
                                                                     args.d_model, args.n_heads, args.e_layers, args.gpt_layers, 
                                                                     args.d_ff, args.embed, ii)
     path = os.path.join(args.checkpoints, setting)
     if not os.path.exists(path):
         os.makedirs(path)
+    result_path = os.path.join(args.checkpoints, 'result_{}.txt'.format(args.run_time))
+    with open(result_path, 'w') as f:
+        f.write('setting: {}\n'.format(setting))
 
     if args.freq == 0:
         args.freq = 'h'
@@ -205,10 +208,24 @@ for ii in range(args.itr):
     model.load_state_dict(torch.load(best_model_path))
     print("------------------------------------")
     mse, mae = test(model, test_data, test_loader, args, device, ii)
+    with open(result_path, 'a') as f:
+        f.write('itr: {}\n'.format(ii))
+        f.write('mse: {:.6f}\n'.format(mse))
+        f.write('mae: {:.6f}\n'.format(mae))
     mses.append(mse)
     maes.append(mae)
 
 mses = np.array(mses)
 maes = np.array(maes)
-print("mse_mean = {:.4f}, mse_std = {:.4f}".format(np.mean(mses), np.std(mses)))
-print("mae_mean = {:.4f}, mae_std = {:.4f}".format(np.mean(maes), np.std(maes)))
+mse_mean = np.mean(mses)
+mse_std = np.std(mses)
+mae_mean = np.mean(maes)
+mae_std = np.std(maes)
+print("mse_mean = {:.4f}, mse_std = {:.4f}".format(mse_mean, mse_std))
+print("mae_mean = {:.4f}, mae_std = {:.4f}".format(mae_mean, mae_std))
+with open(result_path, 'a') as f:
+    f.write('mse_mean: {:.6f}\n'.format(mse_mean))
+    f.write('mse_std: {:.6f}\n'.format(mse_std))
+    f.write('mae_mean: {:.6f}\n'.format(mae_mean))
+    f.write('mae_std: {:.6f}\n'.format(mae_std))
+    f.write('\n')

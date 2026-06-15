@@ -8,6 +8,7 @@ export GPT2_LOCAL_FILES_ONLY=${GPT2_LOCAL_FILES_ONLY:-1}
 seq_len=336
 gpt_layers=6
 model=GPT4TS
+run_time=$(date +%Y%m%d%H)
 
 for percent in 100
 do
@@ -19,7 +20,7 @@ do
 python main.py \
     --root_path ./datasets/ETT-small/ \
     --data_path ETTh1.csv \
-    --model_id ETTh1_$model'_'$gpt_layers'_'$seq_len'_'$pred_len'_'$percent \
+    --model_id ETTh1_${model}_${run_time} \
     --data ett_h \
     --seq_len $seq_len \
     --label_len 168 \
@@ -44,7 +45,8 @@ python main.py \
     --model $model \
     --tmax 20 \
     --cos 1 \
-    --is_gpt 1
+    --is_gpt 1 \
+    --run_time $run_time
 
 done
 done
