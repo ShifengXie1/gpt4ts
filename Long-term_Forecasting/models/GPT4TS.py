@@ -27,6 +27,14 @@ class GPT4TS(nn.Module):
             if configs.pretrain:
                 gpt2_model_path = os.environ.get('GPT2_MODEL_PATH', 'gpt2')
                 local_files_only = os.environ.get('GPT2_LOCAL_FILES_ONLY', '1') != '0'
+                if local_files_only:
+                    os.environ.setdefault('TRANSFORMERS_OFFLINE', '1')
+                    os.environ.setdefault('HF_HUB_OFFLINE', '1')
+                    if not os.path.isdir(gpt2_model_path):
+                        raise FileNotFoundError(
+                            "GPT2_MODEL_PATH must be a local directory when GPT2_LOCAL_FILES_ONLY=1: "
+                            "{}".format(gpt2_model_path)
+                        )
                 print("Loading GPT-2 from: {}".format(gpt2_model_path))
                 self.gpt2 = GPT2Model.from_pretrained(
                     gpt2_model_path,

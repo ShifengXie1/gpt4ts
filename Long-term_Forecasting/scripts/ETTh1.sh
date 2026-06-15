@@ -1,6 +1,8 @@
 
 export CUDA_VISIBLE_DEVICES=0
-export GPT2_MODEL_PATH=${GPT2_MODEL_PATH:-openai-community/gpt2}
+export TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE:-1}
+export HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-1}
+export GPT2_MODEL_PATH=${GPT2_MODEL_PATH:-/root/.cache/huggingface/hub/models--openai-community--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e}
 export GPT2_LOCAL_FILES_ONLY=${GPT2_LOCAL_FILES_ONLY:-1}
 
 seq_len=336
