@@ -183,7 +183,8 @@ class MultiPeriodGPT4TS(nn.Module):
                 raise ValueError("patch sizes must be positive, got {}".format(patch_sizes))
             if patch_size > configs.seq_len:
                 raise ValueError("patch size {} is larger than seq_len {}".format(patch_size, configs.seq_len))
-        return sorted(patch_sizes, reverse=True)
+        # return sorted(patch_sizes, reverse=True)
+        return sorted(patch_sizes)
 
     def forward(self, x, itr):
         B, L, M = x.shape
