@@ -102,17 +102,18 @@ maes = []
 
 def get_train_fft_periods(train_data, args):
     data = train_data.data_x
-    x = torch.from_numpy(data).float()
+    windows = [data[start:start + args.seq_len] for start in range(train_data.tot_len)]
+    x = torch.from_numpy(np.stack(windows, axis=0)).float()
 
-    # [T, C]
-    xf = torch.fft.rfft(x, dim=0)
+    # [B, T, C]
+    xf = torch.fft.rfft(x, dim=1)
     # find period by amplitudes
-    frequency_list = abs(xf).mean(-1)
+    frequency_list = abs(xf).mean(0).mean(-1)
     frequency_list[0] = 0
 
     _, top_list = torch.topk(frequency_list, 1)
     top_list = top_list.detach().cpu().numpy()
-    dominant_period = int(x.shape[0] // top_list[0])
+    dominant_period = int(x.shape[1] // top_list[0])
     scaled_periods = [dominant_period // 2, dominant_period, dominant_period * 2]
     clipped_periods = np.clip(scaled_periods, 1, args.seq_len)
     period_changes = [
