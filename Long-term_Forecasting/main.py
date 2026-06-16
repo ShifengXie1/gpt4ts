@@ -81,7 +81,6 @@ parser.add_argument('--cos', type=int, default=0)
 parser.add_argument('--run_time', type=int, default=0)
 parser.add_argument('--multi_patch', type=str, default='16,24,48')
 parser.add_argument('--fft_patch', type=int, default=0)
-parser.add_argument('--fft_top_k', type=int, default=3)
 parser.add_argument('--fft_periods', type=str, default='')
 
 args = parser.parse_args()
@@ -111,17 +110,18 @@ def get_train_fft_periods(train_data, args):
     frequency_list = abs(xf).mean(-1)
     frequency_list[0] = 0
 
-    _, top_list = torch.topk(frequency_list, args.fft_top_k)
+    _, top_list = torch.topk(frequency_list, 1)
     top_list = top_list.detach().cpu().numpy()
-    raw_period = x.shape[0] // top_list
-    clipped_period = np.clip(raw_period, 1, args.seq_len)
+    dominant_period = int(x.shape[0] // top_list[0])
+    scaled_periods = [dominant_period // 2, dominant_period, dominant_period * 2]
+    clipped_periods = np.clip(scaled_periods, 1, args.seq_len)
     period_changes = [
         (int(raw), int(clipped))
-        for raw, clipped in zip(raw_period, clipped_period)
+        for raw, clipped in zip(scaled_periods, clipped_periods)
         if int(raw) != int(clipped)
     ]
-    periods = sorted([int(p) for p in clipped_period], reverse=True)
-    return periods, period_changes
+    periods = sorted([int(p) for p in clipped_periods], reverse=True)
+    return periods, dominant_period, period_changes
 
 for ii in range(args.itr):
 
@@ -142,10 +142,11 @@ for ii in range(args.itr):
     vali_data, vali_loader = data_provider(args, 'val')
     test_data, test_loader = data_provider(args, 'test')
     if args.model == 'MultiPeriodGPT4TS' and args.fft_patch == 1:
-        fft_periods, period_changes = get_train_fft_periods(train_data, args)
+        fft_periods, dominant_period, period_changes = get_train_fft_periods(train_data, args)
         args.fft_periods = ','.join([str(period) for period in fft_periods])
         args.multi_patch = args.fft_periods
         with open(result_path, 'a') as f:
+            f.write('fft_dominant_period: {}\n'.format(dominant_period))
             f.write('fft_periods: {}\n'.format(args.fft_periods))
             for raw_period, clipped_period in period_changes:
                 f.write('fft_period_clip: {} -> {}\n'.format(raw_period, clipped_period))
