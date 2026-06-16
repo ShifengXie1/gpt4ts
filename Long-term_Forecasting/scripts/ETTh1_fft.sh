@@ -8,7 +8,7 @@ export GPT2_LOCAL_FILES_ONLY=${GPT2_LOCAL_FILES_ONLY:-1}
 seq_len=336
 gpt_layers=6
 multi_patch=16,24,48
-fft_patch=0
+fft_patch=1
 model=MultiPeriodGPT4TS
 run_time=$(date +%Y%m%d%H)
 mkdir -p ./checkpoints

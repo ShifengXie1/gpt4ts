@@ -80,7 +80,9 @@ parser.add_argument('--cos', type=int, default=0)
 
 parser.add_argument('--run_time', type=int, default=0)
 parser.add_argument('--multi_patch', type=str, default='16,24,48')
-
+parser.add_argument('--fft_patch', type=int, default=0)
+parser.add_argument('--fft_top_k', type=int, default=3)
+parser.add_argument('--fft_periods', type=str, default='')
 
 args = parser.parse_args()
 
@@ -98,6 +100,28 @@ SEASONALITY_MAP = {
 
 mses = []
 maes = []
+
+def get_train_fft_periods(train_data, args):
+    data = train_data.data_x
+    x = torch.from_numpy(data).float()
+
+    # [T, C]
+    xf = torch.fft.rfft(x, dim=0)
+    # find period by amplitudes
+    frequency_list = abs(xf).mean(-1)
+    frequency_list[0] = 0
+
+    _, top_list = torch.topk(frequency_list, args.fft_top_k)
+    top_list = top_list.detach().cpu().numpy()
+    raw_period = x.shape[0] // top_list
+    clipped_period = np.clip(raw_period, 1, args.seq_len)
+    period_changes = [
+        (int(raw), int(clipped))
+        for raw, clipped in zip(raw_period, clipped_period)
+        if int(raw) != int(clipped)
+    ]
+    periods = sorted([int(p) for p in clipped_period], reverse=True)
+    return periods, period_changes
 
 for ii in range(args.itr):
 
@@ -117,6 +141,18 @@ for ii in range(args.itr):
     train_data, train_loader = data_provider(args, 'train')
     vali_data, vali_loader = data_provider(args, 'val')
     test_data, test_loader = data_provider(args, 'test')
+    if args.model == 'MultiPeriodGPT4TS' and args.fft_patch == 1:
+        fft_periods, period_changes = get_train_fft_periods(train_data, args)
+        args.fft_periods = ','.join([str(period) for period in fft_periods])
+        args.multi_patch = args.fft_periods
+        with open(result_path, 'a') as f:
+            f.write('fft_periods: {}\n'.format(args.fft_periods))
+            for raw_period, clipped_period in period_changes:
+                f.write('fft_period_clip: {} -> {}\n'.format(raw_period, clipped_period))
+    elif args.model == 'MultiPeriodGPT4TS':
+        args.fft_periods = ''
+        with open(result_path, 'a') as f:
+            f.write('multi_patch: {}\n'.format(args.multi_patch))
 
     if args.freq != 'h':
         args.freq = SEASONALITY_MAP[test_data.freq]

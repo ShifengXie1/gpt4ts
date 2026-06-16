@@ -137,12 +137,10 @@ class MultiPeriodGPT4TS(nn.Module):
                     )
                 )
         
-        self.padding_patch_layers = nn.ModuleList([
-            nn.ReplicationPad1d((0, self.stride)) for _ in self.patch_sizes
-        ])
         self.in_layers = nn.ModuleList([
             nn.Linear(patch_size, self.d_model) for patch_size in self.patch_sizes
         ])
+        self.padding_patch_layer = nn.ReplicationPad1d((0, self.stride))
         self.period_embedding = nn.Embedding(len(self.patch_sizes), self.d_model)
         self.out_heads = nn.ModuleList([
             nn.Linear(self.d_model * patch_num, self.pred_len) for patch_num in self.patch_nums
@@ -156,7 +154,7 @@ class MultiPeriodGPT4TS(nn.Module):
                 else:
                     param.requires_grad = False
 
-        layers = [self.padding_patch_layers, self.in_layers, self.period_embedding, self.out_heads, self.gate]
+        layers = [self.in_layers, self.padding_patch_layer, self.period_embedding, self.out_heads, self.gate]
         if configs.is_gpt:
             layers.append(self.gpt2)
         for layer in layers:
@@ -166,25 +164,7 @@ class MultiPeriodGPT4TS(nn.Module):
         self.cnt = 0
 
     def _parse_patch_sizes(self, configs):
-        multi_patch = getattr(configs, 'multi_patch', '16,24,48')
-        if isinstance(multi_patch, (list, tuple)):
-            patch_sizes = [int(patch_size) for patch_size in multi_patch]
-        else:
-            multi_patch = str(multi_patch).strip()
-            if multi_patch in ['1', 'True', 'true']:
-                patch_sizes = [16, 24, 48]
-            elif multi_patch in ['0', 'False', 'false', 'none', 'None', '']:
-                patch_sizes = [int(configs.patch_size)]
-            else:
-                patch_sizes = [int(patch_size) for patch_size in multi_patch.replace(';', ',').split(',')]
-
-        for patch_size in patch_sizes:
-            if patch_size <= 0:
-                raise ValueError("patch sizes must be positive, got {}".format(patch_sizes))
-            if patch_size > configs.seq_len:
-                raise ValueError("patch size {} is larger than seq_len {}".format(patch_size, configs.seq_len))
-        # return sorted(patch_sizes, reverse=True)
-        return sorted(patch_sizes)
+        return [int(patch_size) for patch_size in configs.multi_patch.split(',')]
 
     def forward(self, x, itr):
         B, L, M = x.shape
@@ -198,13 +178,10 @@ class MultiPeriodGPT4TS(nn.Module):
 
         period_tokens = []
         token_lengths = []
-        for period_id, (patch_size, padding_layer, in_layer) in enumerate(
-            zip(self.patch_sizes, self.padding_patch_layers, self.in_layers)
-        ):
-            patch_x = padding_layer(x)
+        for period_id, (patch_size, in_layer) in enumerate(zip(self.patch_sizes, self.in_layers)):
+            patch_x = self.padding_patch_layer(x)
             patch_x = patch_x.unfold(dimension=-1, size=patch_size, step=self.stride)
             patch_x = rearrange(patch_x, 'b m n p -> (b m) n p')
-
             tokens = in_layer(patch_x)
             period_ids = torch.full(
                 (tokens.shape[0], tokens.shape[1]),
@@ -224,8 +201,9 @@ class MultiPeriodGPT4TS(nn.Module):
         period_preds = []
         gate_scores = []
         for period_output, out_head in zip(period_outputs, self.out_heads):
+            period_hidden = period_output.mean(dim=1)
             period_preds.append(out_head(period_output.reshape(B * M, -1)))
-            gate_scores.append(self.gate(period_output.mean(dim=1)))
+            gate_scores.append(self.gate(period_hidden))
 
         period_preds = torch.stack(period_preds, dim=1)
         gate_scores = torch.stack(gate_scores, dim=1)
